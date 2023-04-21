@@ -20,12 +20,13 @@ if uploaded_file is not None:
     results = []
 
     for line in data:
+        print(line)
         if not appending:
             if "no." in line:
                 list = []
                 appending = True
         else:
-            if len(line.split()) < 5:
+            if len(line.split()) < 2:
                 appending = False
                 results.append(list)
             else:
@@ -38,4 +39,7 @@ if uploaded_file is not None:
             list1.append([float(x) for x in line.split()])
         results1.append(list1)
 
-    results1
+    results1[0]
+    results1[1]
+    results1[2]
+    results1[3]
