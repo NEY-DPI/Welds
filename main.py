@@ -26,7 +26,8 @@ if uploaded_file is not None:
                 list = []
                 appending = True
         else:
-            if line == " ":
+            len(line.split())
+            if len(line.split()) < 2:
                 appending = False
                 results.append(list)
             else:
