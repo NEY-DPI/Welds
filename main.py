@@ -12,7 +12,8 @@ from io import StringIO
 "### Import txt file from wingraf"
 uploaded_file = st.file_uploader("Choose a file")
 if uploaded_file is not None:
-    data = uploaded_file.readlines()
+    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+    data = stringio.readlines()
 
     appending = False
     list = []
@@ -24,7 +25,7 @@ if uploaded_file is not None:
                 list = []
                 appending = True
         else:
-            if len(line.split()) < 1:
+            if len(line.split()) < 5:
                 appending = False
                 results.append(list)
             else:
@@ -36,6 +37,5 @@ if uploaded_file is not None:
         for line in list:
             list1.append([float(x) for x in line.split()])
         results1.append(list1)
-
 
     results1
