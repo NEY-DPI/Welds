@@ -40,4 +40,4 @@ if uploaded_file is not None:
             list1.append([float(x) for x in line.split()])
         results1.append(list1)
 
-    results1
+    results
