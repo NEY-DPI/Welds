@@ -25,12 +25,14 @@ if uploaded_file is not None:
                 list = []
                 appending = True
         else:
-            st.write(len(line.split()))
             if len(line.split()) < 2:
                 appending = False
                 results.append(list)
             else:
                 list.append(line)
+    if appending:
+        appending = False
+        results.append(list)
 
     results1 = []
     for list in results:
