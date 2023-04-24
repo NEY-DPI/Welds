@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from io import StringIO
+import func as f
 
 '''
 # Welds
@@ -14,31 +15,7 @@ uploaded_file = st.file_uploader("Choose a file")
 if uploaded_file is not None:
     stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
     data = stringio.readlines()
-
-    appending = False
-    list = []
-    results = []
-
-    for line in data:
-        if not appending:
-            if "no." in line:
-                list = []
-                appending = True
-        else:
-            if len(line.split()) < 2:
-                appending = False
-                results.append(list)
-            else:
-                list.append(line)
-    if appending:
-        appending = False
-        results.append(list)
-
-    results1 = []
-    for list in results:
-        list1 = []
-        for line in list:
-            list1.append([float(x) for x in line.split()])
-        results1.append(list1)
-
-    results1
+    forces = f.decode(data)
+    forces_by_cut = forces.groupby('cut').first()
+    list_of_cuts = forces_by_cut[0]
+    list_of_cuts
