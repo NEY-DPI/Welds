@@ -38,6 +38,7 @@ def decode(data):
     df_Vt = pd.DataFrame(results1[2], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'Vt'])
     df_Vl = pd.DataFrame(results1[3], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'Vl'])
     df = pd.DataFrame()
+
     df['cut'] = df_N['cut']
     df['x'] = df_N['x']
     df['y'] = df_N['y']
@@ -46,7 +47,6 @@ def decode(data):
     df['M'] = df_M['M']
     df['Vt'] = df_Vt['Vt']
     df['Vl'] = df_Vl['Vl']
-
     return df
 
 
@@ -56,6 +56,15 @@ def get_forces(mode, data):
             stringio = StringIO(data.getvalue().decode("utf-8"))
             read_data = stringio.readlines()
             forces = decode(read_data)
+
+            cut_list = forces['cut'].tolist()
+            cut_list2 = []
+            for item in cut_list:
+                item2 = str(item)
+                item3 = item2.split(".")
+                item4 = item3[0]
+                cut_list2.append(item4)
+            forces['cut'] = cut_list2
             return forces
     elif mode == 'From Excel':
         if data is not None:
@@ -81,6 +90,24 @@ def get_distances(cut, df_cut):
         list_d.append(((list_x[i] - list_x[0]) ** 2 +
                        (list_y[i] - list_y[0]) ** 2 +
                        (list_z[i] - list_z[0]) ** 2) ** 0.5)
+    max_d = max(list_d)
+    list_d = [x / max_d for x in list_d]
+    return list_d
+
+
+def get_distances_per_weld(df):
+    df_sort = df.sort_values(by=['x'])
+    x0 = df_sort['x'].values.tolist()[0]
+    y0 = df_sort['y'].values.tolist()[0]
+    z0 = df_sort['z'].values.tolist()[0]
+    list_x = df['x'].values.tolist()
+    list_y = df['y'].values.tolist()
+    list_z = df['z'].values.tolist()
+    list_d = []
+    for i in range(len(list_x)):
+        list_d.append(((list_x[i] - x0) ** 2 +
+                       (list_y[i] - y0) ** 2 +
+                       (list_z[i] - z0) ** 2) ** 0.5)
     max_d = max(list_d)
     list_d = [x / max_d for x in list_d]
     return list_d
@@ -233,7 +260,20 @@ def calculate(df, fw_vm, fw_perp):
     return df
 
 
-def make_plot(list_of_df, display_cut, data_to_display):
+def calc_req_a(df, weld):
+    df_req_a = df.copy().reset_index()
+    df_req_a['a'] = 3
+    df_req_a = calculate(df_req_a, weld['fw_vm'], weld['fw_perp'])
+
+    while df_req_a['uc (-)'].max() > 1:
+        for i in range(len(df_req_a['d'].values.tolist())):
+            if df_req_a['uc (-)'][i] > 1:
+                df_req_a['a'][i] += 1
+        df_req_a = calculate(df_req_a, weld['fw_vm'], weld['fw_perp'])
+    return df_req_a
+
+
+def make_plot(list_of_df, list_of_df_req, display_cut, data_to_display, show_req):
     if 'uc' in data_to_display:
         y_limit = 1
     else:
@@ -258,11 +298,66 @@ def make_plot(list_of_df, display_cut, data_to_display):
              label=f't welded plate (mm)', marker='.')
     ax1.plot(list_of_df[0]['d'][:], list_of_df[0]['tpl2'][:], color='green', linestyle='--', linewidth=1,
              label=f't receiver plate (mm)', marker='.')
-    ax1.plot(list_of_df[0]['d'][:], list_of_df[0]['a'][:], color='red', label='weld size (mm)', marker='.')
-    for i in range(len(display_cut)):
-        if display_cut[i]:
-            df = list_of_df[i]
-            ax2.plot(df['d'][:], df[data_to_display][:], color='black', linewidth=1, label=f'{data_to_display} cut {df["cut"].values[0]}', marker='.')
+
+    if show_req == 'Show required weld size':
+        ax1.plot(list_of_df_req[0]['d'][:], list_of_df_req[0]['a'][:], color='red', label='weld size (mm)', marker='.')
+        for i in range(len(display_cut)):
+            if display_cut[i]:
+                df = list_of_df_req[i]
+                ax2.plot(df['d'][:], df[data_to_display][:], color='black', linewidth=1,
+                         label=f'{data_to_display} cut {df["cut"].values[0]}', marker='.')
+    else:
+        ax1.plot(list_of_df[0]['d'][:], list_of_df[0]['a'][:], color='red', label='weld size (mm)', marker='.')
+        for i in range(len(display_cut)):
+            if display_cut[i]:
+                df = list_of_df[i]
+                ax2.plot(df['d'][:], df[data_to_display][:], color='black', linewidth=1,
+                         label=f'{data_to_display} cut {df["cut"].values[0]}', marker='.')
+
+    ax1.set_xlabel('x (m)')
+    ax1.set_ylabel('(mm)')
+    ax2.set_ylabel(data_to_display)
+    ax1.legend(loc='upper left', bbox_to_anchor=(0.1, 1), framealpha=1, facecolor='white')
+    ax2.legend(loc='upper right', bbox_to_anchor=(0.9, 1), framealpha=1, facecolor='white')
+
+    ax1.set_axisbelow(True)
+    ax2.set_axisbelow(True)
+
+    return plt
+
+
+def make_plot_per_weld(df, df_req_a, data_to_display, show_req):
+    if 'uc' in data_to_display:
+        y_limit = 1
+    else:
+        y_limit = 500
+
+    plt.figure(figsize=(14, 8))
+    ax1 = plt.gca()
+    ax2 = ax1.twinx()
+    ax1.set_ylim(0, 40)
+    ax2.set_ylim(0, y_limit)
+    ax1.set_xlim(0, 1)
+
+    ax1.xaxis.set_major_locator(MultipleLocator(0.05))
+    ax1.yaxis.set_major_locator(MultipleLocator(5))
+    ax1.yaxis.set_minor_locator(MultipleLocator(1))
+    ax2.yaxis.set_major_locator(MultipleLocator(0.05*y_limit))
+    ax1.grid(which='major', color='#CCCCCC', linestyle=':')
+    ax2.grid(which='major', color='#CCCCCC', linestyle='--')
+    ax1.grid(which='minor', color='#CCCCCC', linestyle=':')
+
+    ax1.plot(df['d'][:], df['tpl1'][:], color='blue', linestyle='--', linewidth=1,
+             label=f't welded plate (mm)', marker='.')
+    ax1.plot(df['d'][:], df['tpl2'][:], color='green', linestyle='--', linewidth=1,
+             label=f't receiver plate (mm)', marker='.')
+
+    if show_req == 'Show required weld size':
+        ax1.plot(df['d'][:], df_req_a['a'][:], color='red', label='required weld size (mm)', marker='.')
+        ax2.plot(df['d'][:], df_req_a[data_to_display][:], color='black', linewidth=1, label=f'{data_to_display}', marker='.')
+    else:
+        ax1.plot(df['d'][:], df['a'][:], color='red', label='weld size (mm)', marker='.')
+        ax2.plot(df['d'][:], df[data_to_display][:], color='black', linewidth=1, label=f'{data_to_display}', marker='.')
 
     ax1.set_xlabel('x (m)')
     ax1.set_ylabel('(mm)')
@@ -277,28 +372,52 @@ def make_plot(list_of_df, display_cut, data_to_display):
 
 
 def calc_graph(forces, weld, calc_mode):
-    if calc_mode == 'Values along weld':
-
-        forces_by_cut = forces.groupby('cut').first().reset_index()
-        list_of_cuts = forces_by_cut['cut'].values.tolist()
-
-        list_of_df = []
-        for cut in list_of_cuts:
-            df_cut = forces[forces['cut'] == cut]
-            list_distances = get_distances(cut, df_cut)
-            df_cut['d'] = list_distances
-            df_cut['w_type'] = weld['w_type']
-            df_cut['tpl1'] = weld['tpl1']
-            df_cut['tpl2'] = weld['tpl2']
-            df_cut['a'] = weld['a']
-            calc_cut = calculate(df_cut, weld['fw_vm'], weld['fw_perp'])
-            list_of_df.append(calc_cut)
-
+    if forces is None:
+        return
+    forces_by_cut = forces.groupby('cut').first().reset_index()
+    list_of_cuts = forces_by_cut['cut'].values.tolist()
+    list_of_df = []
+    for cut in list_of_cuts:
+        df_cut = forces[forces['cut'] == cut]
+        list_distances = get_distances(cut, df_cut)
+        df_cut['d'] = list_distances
+        df_cut['w_type'] = weld['w_type']
+        df_cut['tpl1'] = weld['tpl1']
+        df_cut['tpl2'] = weld['tpl2']
+        df_cut['a'] = weld['a']
+        calc_cut = calculate(df_cut, weld['fw_vm'], weld['fw_perp'])
+        list_of_df.append(calc_cut)
+    st.markdown("Select what to display")
+    col1, col2 = st.columns(2)
+    with col1:
         data_to_display = st.selectbox(
             'Select what to display',
             ('uc (-)', 'uc_vm (-)', 'uc_perp (-)', 'sig_vm (MPa)', 'tau_long (MPa)', 'tau_perp (MPa)',
-             'sig_perp (MPa)', 'sig_perp_Vt (MPa)', 'sig_perp_Me (MPa)', 'sig_perp_N (MPa)'))
+             'sig_perp (MPa)', 'sig_perp_Vt (MPa)', 'sig_perp_Me (MPa)', 'sig_perp_N (MPa)'),
+            label_visibility="collapsed", key="data_to_display")
+    with col2:
+        show_req = st.selectbox(
+            'Show required',
+            ('Show required weld size', 'Show input weld size'),
+            label_visibility="collapsed", key="show_req")
 
+    if calc_mode == 'Max per weld':
+        df = pd.concat(list_of_df)
+        df_mean = df.groupby('cut').mean()
+        df_max = df.groupby(['cut']).max()
+        df_new = df_max
+        df_new['x'] = df_mean['x']
+        df_new['y'] = df_mean['y']
+        df_new['z'] = df_mean['z']
+        list_distances = get_distances_per_weld(df_new)
+        df_new['d'] = list_distances
+        df_new = df_new.sort_values(by=['d']).reset_index()
+        df_req_a = calc_req_a(df_new, weld)
+
+        st.pyplot(fig=make_plot_per_weld(df_new, df_req_a, data_to_display, show_req), clear_figure=None,
+                  use_container_width=True)
+
+    elif calc_mode == 'Values along weld':
         n_col = 8
         cols = st.columns(n_col)
         display_cut = []
@@ -306,13 +425,13 @@ def calc_graph(forces, weld, calc_mode):
             with cols[i % n_col]:
                 display_cut.append(st.checkbox(f'{list_of_cuts[i]}', key=10 + i, value=True))
 
-        st.pyplot(fig=make_plot(list_of_df, display_cut, data_to_display), clear_figure=None,
+        list_of_df_req = []
+        for df in list_of_df:
+            df_req_a = calc_req_a(df, weld)
+            list_of_df_req.append(df_req_a)
+
+        st.pyplot(fig=make_plot(list_of_df, list_of_df_req, display_cut, data_to_display, show_req), clear_figure=None,
                   use_container_width=True)
-
-    elif calc_mode == 'Max per weld':
-        #TODO
-        pass
-
 
 
 
