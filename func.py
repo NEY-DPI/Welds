@@ -300,10 +300,11 @@ def make_plot(list_of_df, list_of_df_req, display_cut, data_to_display, show_req
              label=f't receiver plate (mm)', marker='.')
 
     if show_req == 'Show required weld size':
-        ax1.plot(list_of_df_req[0]['d'][:], list_of_df_req[0]['a'][:], color='red', label='weld size (mm)', marker='.')
         for i in range(len(display_cut)):
             if display_cut[i]:
                 df = list_of_df_req[i]
+                ax1.plot(df['d'][:], df['a'][:], color='red', label='weld size (mm)',
+                         marker='.')
                 ax2.plot(df['d'][:], df[data_to_display][:], color='black', linewidth=1,
                          label=f'{data_to_display} cut {df["cut"].values[0]}', marker='.')
     else:
