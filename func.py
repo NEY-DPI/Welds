@@ -6,6 +6,12 @@ from io import StringIO
 import streamlit as st
 
 
+@st.cache_data
+def convert_df(df):
+    # IMPORTANT: Cache the conversion to prevent computation on every rerun
+    return df.to_csv().encode('utf-8')
+
+
 def decode(data):
     appending = False
     list = []
@@ -72,15 +78,6 @@ def get_forces(mode, data):
             return
 
 
-def get_weld_inputs(mode, data):
-    if mode == 'Unique values':
-        return data
-    elif mode == 'From Excel':
-        if data is not None:
-            # TODO
-            return
-
-
 def get_distances(df_cut):
     list_x = df_cut['x'].values.tolist()
     list_y = df_cut['y'].values.tolist()
@@ -113,12 +110,14 @@ def get_distances_per_weld(df):
     return list_d
 
 
-def calculate(df, fw_vm, fw_perp):
+def calculate(df):
     list_d = df['d'].values.tolist()
     w_type = df['w_type'].values.tolist()
     tpl1 = df['tpl1'].values.tolist()
     tpl2 = df['tpl2'].values.tolist()
     a = df['a'].values.tolist()
+    fw_vm = df['fw_vm'].values.tolist()
+    fw_perp = df['fw_perp'].values.tolist()
     N = df['N'].abs().values.tolist()
     M = df['M'].abs().values.tolist()
     Vt = df['Vt'].abs().values.tolist()
@@ -242,13 +241,13 @@ def calculate(df, fw_vm, fw_perp):
     # uc perp (-)
     uc_perp = []
     for x in range(len(list_d)):
-        uc_perp.append(sig_perp[x] / fw_perp)
+        uc_perp.append(sig_perp[x] / fw_perp[x])
     df.loc[:, 'uc_perp (-)'] = uc_perp
 
     # uc vm (-)
     uc_vm = []
     for x in range(len(list_d)):
-        uc_vm.append(sig_vm[x] / fw_vm)
+        uc_vm.append(sig_vm[x] / fw_vm[x])
     df.loc[:, 'uc_vm (-)'] = uc_vm
 
     # uc (-)
@@ -263,13 +262,13 @@ def calculate(df, fw_vm, fw_perp):
 def calc_req_a(df, weld):
     df_req_a = df.copy().reset_index()
     df_req_a['a'] = 3
-    df_req_a = calculate(df_req_a, weld['fw_vm'], weld['fw_perp'])
+    df_req_a = calculate(df_req_a)
 
     while df_req_a['uc (-)'].max() > 1:
         for i in range(len(df_req_a['d'].values.tolist())):
             if df_req_a['uc (-)'][i] > 1:
                 df_req_a['a'][i] += 1
-        df_req_a = calculate(df_req_a, weld['fw_vm'], weld['fw_perp'])
+        df_req_a = calculate(df_req_a)
     return df_req_a
 
 
@@ -382,13 +381,49 @@ def calc_graph(forces, weld, calc_mode):
         df_cut = forces[forces['cut'] == cut]
         list_distances = get_distances(df_cut)
         df_cut['d'] = list_distances
-        df_cut['w_type'] = weld['w_type']
-        df_cut['tpl1'] = weld['tpl1']
-        df_cut['tpl2'] = weld['tpl2']
-        df_cut['a'] = weld['a']
-        calc_cut = calculate(df_cut, weld['fw_vm'], weld['fw_perp'])
-        calc_cut_sorted = calc_cut.sort_values(by=['d']).reset_index()
-        list_of_df.append(calc_cut_sorted)
+        df_cut = df_cut.sort_values(by=['d']).reset_index()
+        if isinstance(weld, pd.DataFrame):
+            df_cut['w_type'] = ''
+            df_cut['tpl1'] = 0
+            df_cut['tpl2'] = 0
+            df_cut['a'] = 0
+            df_cut['beta_w'] = 0
+            df_cut['fu'] = 0
+            df_cut['g_M2'] = 0
+            df_cut['fw_vm'] = 0
+            df_cut['fw_perp'] = 0
+            for j in range(len(list_distances)):
+                checking = True
+                i = 0
+                chosen_i = 0
+                while checking:
+                    if list_distances[j] <= weld['x'][i]:
+                        chosen_i = i
+                        checking = False
+                    else:
+                        i += 1
+                df_cut['w_type'][j] = weld['w_type'][chosen_i]
+                df_cut['tpl1'][j] = weld['tpl1'][chosen_i]
+                df_cut['tpl2'][j] = weld['tpl2'][chosen_i]
+                df_cut['a'][j] = weld['a'][chosen_i]
+                df_cut['beta_w'][j] = weld['beta_w'][chosen_i]
+                df_cut['fu'][j] = weld['fu'][chosen_i]
+                df_cut['g_M2'][j] = weld['g_M2'][chosen_i]
+                df_cut['fw_vm'][j] = weld['fw_vm'][chosen_i]
+                df_cut['fw_perp'][j] = weld['fw_perp'][chosen_i]
+        else:
+            df_cut['w_type'] = weld['w_type']
+            df_cut['tpl1'] = weld['tpl1']
+            df_cut['tpl2'] = weld['tpl2']
+            df_cut['a'] = weld['a']
+            df_cut['beta_w'] = weld['beta_w']
+            df_cut['fu'] = weld['fu']
+            df_cut['g_M2'] = weld['g_M2']
+            df_cut['fw_vm'] = weld['fw_vm']
+            df_cut['fw_perp'] = weld['fw_perp']
+
+        calc_cut = calculate(df_cut)
+        list_of_df.append(calc_cut)
     st.markdown("Select what to display")
     col1, col2 = st.columns(2)
     with col1:

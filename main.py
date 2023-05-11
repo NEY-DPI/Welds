@@ -56,22 +56,27 @@ with st.sidebar.expander("Weld Inputs"):
             'g_M2': g_M2
         }
     elif weld_inputs_mode == 'From Excel':
-        # TODO: download template excel
-        # TODO: upload excel
-        st.write('TO DO')
-        fu = 0
-        g_M2 = 1.25
-        beta_w = 0.9
-        weld_inputs = {
-            'w_type': 0,
-            'a': 0,
-            'tpl1': 0,
-            'tpl2': 0,
-            'beta_w': beta_w,
-            'fu': fu,
-            'g_M2': g_M2
-        }
-        pass
+        weld_csv = st.file_uploader("Choose a file", type="csv")
+
+        data = [[0, 10, 10, 'double fillet', 3, 0.9, 470, 1.25],
+                [0.5, 10, 10, 'double fillet', 3, 0.9, 470, 1.25],
+                [1, 10, 10, 'double fillet', 3, 0.9, 470, 1.25]]
+        weld_input_template = pd.DataFrame(data, columns=[
+            'x', 'tpl1', 'tpl2', 'w_type', 'a', 'beta_w', 'fu', 'g_M2'
+        ])
+        csv = f.convert_df(weld_input_template)
+        st.download_button(
+            label="Download template",
+            data=csv,
+            file_name='weld_input.csv',
+            mime='text/csv',
+        )
+
+        if weld_csv is not None:
+            weld_inputs = pd.read_csv(weld_csv)
+        else:
+            weld_inputs = weld_input_template
+
 
 # Forces Input
 with st.sidebar.expander("Forces Input"):
@@ -96,16 +101,14 @@ with st.sidebar.expander("Forces Input"):
         pass
 
 # Calculated values
-fw_perp = 0.9 * fu / g_M2
-fw_vm = fu / (beta_w * g_M2)
-weld_inputs['fw_perp'] = fw_perp
-weld_inputs['fw_vm'] = fw_vm
+weld_inputs['fw_perp'] = 0.9 * weld_inputs['fu'] / weld_inputs['g_M2']
+weld_inputs['fw_vm'] = weld_inputs['fu'] / (weld_inputs['beta_w'] * weld_inputs['g_M2'])
 
 # Calculate graph
 with st.expander("Graph"):
     if forces_input_mode == 'From Wingraf':
         forces = f.get_forces(forces_input_mode, forces_input)
-        weld = f.get_weld_inputs(weld_inputs_mode, weld_inputs)
+        weld = weld_inputs
         f.calc_graph(forces, weld, calc_mode)
     elif forces_input_mode == 'Manual':
         # Manual input of forces
@@ -122,17 +125,18 @@ with st.expander("Graph"):
         df_man['tpl1'] = tpl1
         df_man['tpl2'] = tpl2
         df_man['a'] = a
-        calc_cut = f.calculate(df_man, fw_vm, fw_perp)
+        calc_cut = f.calculate(df_man)
         st.pyplot(fig=f.make_plot_man(calc_cut), clear_figure=None, use_container_width=True)
 
 # Calculated Values
-with st.expander("Calculated values"):
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        string = '\small{' + 'f_{w,\perp}' + f'= {"{:.2f}".format( fw_perp )}' + 'MPa' + '}'
-        st.latex(string)
-    with col2:
-        string = '\small{' + 'f_{w,vm}' + f'= {"{:.2f}".format(fw_vm)}' + 'MPa' + '}'
-        st.latex(string)
+if weld_inputs_mode == 'Unique values':
+    with st.expander("Calculated values"):
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            string = '\small{' + 'f_{w,\perp}' + f'= {"{:.2f}".format( weld_inputs["fw_perp"] )}' + 'MPa' + '}'
+            st.latex(string)
+        with col2:
+            string = '\small{' + 'f_{w,vm}' + f'= {"{:.2f}".format(weld_inputs["fw_vm"])}' + 'MPa' + '}'
+            st.latex(string)
 
 
