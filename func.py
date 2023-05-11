@@ -81,7 +81,7 @@ def get_weld_inputs(mode, data):
             return
 
 
-def get_distances(cut, df_cut):
+def get_distances(df_cut):
     list_x = df_cut['x'].values.tolist()
     list_y = df_cut['y'].values.tolist()
     list_z = df_cut['z'].values.tolist()
@@ -380,14 +380,15 @@ def calc_graph(forces, weld, calc_mode):
     list_of_df = []
     for cut in list_of_cuts:
         df_cut = forces[forces['cut'] == cut]
-        list_distances = get_distances(cut, df_cut)
+        list_distances = get_distances(df_cut)
         df_cut['d'] = list_distances
         df_cut['w_type'] = weld['w_type']
         df_cut['tpl1'] = weld['tpl1']
         df_cut['tpl2'] = weld['tpl2']
         df_cut['a'] = weld['a']
         calc_cut = calculate(df_cut, weld['fw_vm'], weld['fw_perp'])
-        list_of_df.append(calc_cut)
+        calc_cut_sorted = calc_cut.sort_values(by=['d']).reset_index()
+        list_of_df.append(calc_cut_sorted)
     st.markdown("Select what to display")
     col1, col2 = st.columns(2)
     with col1:
