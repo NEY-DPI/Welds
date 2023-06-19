@@ -121,10 +121,15 @@ with st.expander("Graph"):
                                                  num_rows="dynamic", disabled=False, key='manual forces')
         df_man = forces_man
         df_man['d'] = forces_man['LC']
-        df_man['w_type'] = w_type
-        df_man['tpl1'] = tpl1
-        df_man['tpl2'] = tpl2
-        df_man['a'] = a
+        df_man['w_type'] = weld_inputs['w_type']
+        df_man['tpl1'] = weld_inputs['tpl1']
+        df_man['tpl2'] = weld_inputs['tpl2']
+        df_man['a'] = weld_inputs['a']
+        df_man['beta_w'] = weld_inputs['beta_w']
+        df_man['fu'] = weld_inputs['fu']
+        df_man['g_M2'] = weld_inputs['g_M2']
+        df_man['fw_vm'] = weld_inputs['fw_vm']
+        df_man['fw_perp'] = weld_inputs['fw_perp']
         calc_cut = f.calculate(df_man)
         st.pyplot(fig=f.make_plot_man(calc_cut), clear_figure=None, use_container_width=True)
 

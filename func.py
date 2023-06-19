@@ -318,7 +318,7 @@ def make_plot(list_of_df, list_of_df_req, display_cut, data_to_display, show_req
     ax1.set_ylabel('(mm)')
     ax2.set_ylabel(data_to_display)
     ax1.legend(loc='upper left', bbox_to_anchor=(0.1, 1), framealpha=1, facecolor='white')
-    ax2.legend(loc='upper right', bbox_to_anchor=(0.9, 1), framealpha=1, facecolor='white')
+    ax2.legend(loc='best', bbox_to_anchor=(0.9, 1), framealpha=1, facecolor='white')
 
     ax1.set_axisbelow(True)
     ax2.set_axisbelow(True)
@@ -363,7 +363,7 @@ def make_plot_per_weld(df, df_req_a, data_to_display, show_req):
     ax1.set_ylabel('(mm)')
     ax2.set_ylabel(data_to_display)
     ax1.legend(loc='upper left', framealpha=1, facecolor='white')
-    ax2.legend(loc='upper center', framealpha=1, facecolor='white')
+    ax2.legend(loc='best', framealpha=1, facecolor='white')
 
     ax1.set_axisbelow(True)
     ax2.set_axisbelow(True)
@@ -439,7 +439,14 @@ def calc_graph(forces, weld, calc_mode):
             label_visibility="collapsed", key="show_req")
 
     if calc_mode == 'Max per weld':
+        list_of_df_req = []
+        for df in list_of_df:
+            df_req_a = calc_req_a(df, weld)
+            list_of_df_req.append(df_req_a)
+
         df = pd.concat(list_of_df)
+        df_req_a = pd.concat(list_of_df_req)
+
         df_mean = df.groupby('cut').mean()
         df_max = df.groupby(['cut']).max()
         df_new = df_max
@@ -448,8 +455,15 @@ def calc_graph(forces, weld, calc_mode):
         df_new['z'] = df_mean['z']
         list_distances = get_distances_per_weld(df_new)
         df_new['d'] = list_distances
+
+        df_req_a = df_req_a.groupby(['cut']).max()
+        df_req_a['x'] = df_mean['x']
+        df_req_a['y'] = df_mean['y']
+        df_req_a['z'] = df_mean['z']
+        df_req_a['d'] = list_distances
+
         df_new = df_new.sort_values(by=['d']).reset_index()
-        df_req_a = calc_req_a(df_new, weld)
+        df_req_a = df_req_a.sort_values(by=['d']).reset_index()
 
         st.pyplot(fig=make_plot_per_weld(df_new, df_req_a, data_to_display, show_req), clear_figure=None,
                   use_container_width=True)
@@ -514,7 +528,7 @@ def make_plot_man(df):
     ax1.set_ylabel('(mm)')
     ax2.set_ylabel('uc (-)')
     ax1.legend(loc='upper left', framealpha=1, facecolor='white')
-    ax2.legend(framealpha=1, facecolor='white')
+    ax2.legend(loc='best', framealpha=1, facecolor='white')
 
     ax1.set_axisbelow(True)
     ax2.set_axisbelow(True)
