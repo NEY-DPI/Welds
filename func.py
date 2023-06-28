@@ -41,6 +41,7 @@ def decode(data, calc_mode):
 
     df_N = pd.DataFrame(results1[0], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'N'])
     if calc_mode == 'Max per weld':
+
         df_N['N'] = df_N['N'].abs()
         df_N = df_N.groupby(['cut', 'quad']).max().reset_index()
 
