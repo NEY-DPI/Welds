@@ -447,7 +447,7 @@ def calc_graph(forces, weld, calc_mode):
         df = pd.concat(list_of_df)
         df_req_a = pd.concat(list_of_df_req)
 
-        df_mean = df.groupby('cut').mean()
+        df_mean = df.groupby('cut').mean(numeric_only=True)
         df_max = df.groupby(['cut']).max()
         df_new = df_max
         df_new['x'] = df_mean['x']
