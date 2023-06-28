@@ -107,7 +107,7 @@ weld_inputs['fw_vm'] = weld_inputs['fu'] / (weld_inputs['beta_w'] * weld_inputs[
 # Calculate graph
 with st.expander("Graph"):
     if forces_input_mode == 'From Wingraf':
-        forces = f.get_forces(forces_input_mode, forces_input)
+        forces = f.get_forces(forces_input_mode, forces_input, calc_mode)
         weld = weld_inputs
         f.calc_graph(forces, weld, calc_mode)
     elif forces_input_mode == 'Manual':

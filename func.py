@@ -12,7 +12,7 @@ def convert_df(df):
     return df.to_csv().encode('utf-8')
 
 
-def decode(data):
+def decode(data, calc_mode):
     appending = False
     list = []
     results = []
@@ -39,43 +39,45 @@ def decode(data):
             list1.append([float(x) for x in line.split()])
         results1.append(list1)
 
-
-
     df_N = pd.DataFrame(results1[0], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'N'])
-    df_N['N'] = df_N['N'].abs()
-    df_N2 = df_N.groupby(['cut', 'quad']).max().reset_index()
+    if calc_mode == 'Max per weld':
+        df_N['N'] = df_N['N'].abs()
+        df_N = df_N.groupby(['cut', 'quad']).max().reset_index()
 
     df_M = pd.DataFrame(results1[1], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'M'])
-    df_M['M'] = df_M['M'].abs()
-    df_M2 = df_M.groupby(['cut', 'quad']).max().reset_index()
+    if calc_mode == 'Max per weld':
+        df_M['M'] = df_M['M'].abs()
+        df_M = df_M.groupby(['cut', 'quad']).max().reset_index()
 
     df_Vt = pd.DataFrame(results1[2], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'Vt'])
-    df_Vt['Vt'] = df_Vt['Vt'].abs()
-    df_Vt2 = df_Vt.groupby(['cut', 'quad']).max().reset_index()
+    if calc_mode == 'Max per weld':
+        df_Vt['Vt'] = df_Vt['Vt'].abs()
+        df_Vt = df_Vt.groupby(['cut', 'quad']).max().reset_index()
 
     df_Vl = pd.DataFrame(results1[3], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'Vl'])
-    df_Vl['Vl'] = df_Vl['Vl'].abs()
-    df_Vl2 = df_Vl.groupby(['cut', 'quad']).max().reset_index()
+    if calc_mode == 'Max per weld':
+        df_Vl['Vl'] = df_Vl['Vl'].abs()
+        df_Vl = df_Vl.groupby(['cut', 'quad']).max().reset_index()
 
     df = pd.DataFrame()
 
-    df['cut'] = df_N2['cut']
-    df['x'] = df_N2['x']
-    df['y'] = df_N2['y']
-    df['z'] = df_N2['z']
-    df['N'] = df_N2['N']
-    df['M'] = df_M2['M']
-    df['Vt'] = df_Vt2['Vt']
-    df['Vl'] = df_Vl2['Vl']
+    df['cut'] = df_N['cut']
+    df['x'] = df_N['x']
+    df['y'] = df_N['y']
+    df['z'] = df_N['z']
+    df['N'] = df_N['N']
+    df['M'] = df_M['M']
+    df['Vt'] = df_Vt['Vt']
+    df['Vl'] = df_Vl['Vl']
     return df
 
 
-def get_forces(mode, data):
+def get_forces(mode, data, calc_mode):
     if mode == 'From Wingraf':
         if data is not None:
             stringio = StringIO(data.getvalue().decode("utf-8"))
             read_data = stringio.readlines()
-            forces = decode(read_data)
+            forces = decode(read_data, calc_mode)
 
             cut_list = forces['cut'].tolist()
             cut_list2 = []
