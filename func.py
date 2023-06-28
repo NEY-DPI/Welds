@@ -41,9 +41,11 @@ def decode(data, calc_mode):
 
     df_N = pd.DataFrame(results1[0], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'N'])
     if calc_mode == 'Max per weld':
-
         df_N['N'] = df_N['N'].abs()
-        df_N = df_N.groupby(['cut', 'quad']).max().reset_index()
+        df_N_max = df_N.groupby(['cut', 'quad']).max().reset_index()
+        df_N_mean = df_N.groupby(['cut', 'quad']).mean().reset_index()
+        df_N = df_N_mean
+        df_N['N'] = df_N_max['N']
 
     df_M = pd.DataFrame(results1[1], columns=['cut', 'quad', 'seg', 'x', 'y', 'z', 'M'])
     if calc_mode == 'Max per weld':
@@ -391,56 +393,84 @@ def make_plot_per_weld(df, df_req_a, data_to_display, show_req):
 def calc_graph(forces, weld, calc_mode):
     if forces is None:
         return
-    forces_by_cut = forces.groupby('cut').first().reset_index()
-    list_of_cuts = forces_by_cut['cut'].values.tolist()
-    list_of_df = []
-    for cut in list_of_cuts:
-        df_cut = forces[forces['cut'] == cut]
-        list_distances = get_distances(df_cut)
-        df_cut['d'] = list_distances
-        df_cut = df_cut.sort_values(by=['d']).reset_index()
-        if isinstance(weld, pd.DataFrame):
-            df_cut['w_type'] = ''
-            df_cut['tpl1'] = 0
-            df_cut['tpl2'] = 0
-            df_cut['a'] = 0
-            df_cut['beta_w'] = 0
-            df_cut['fu'] = 0
-            df_cut['g_M2'] = 0
-            df_cut['fw_vm'] = 0
-            df_cut['fw_perp'] = 0
-            for j in range(len(list_distances)):
-                checking = True
-                i = 0
-                chosen_i = 0
-                while checking:
-                    if list_distances[j] <= weld['x'][i]:
-                        chosen_i = i
-                        checking = False
-                    else:
-                        i += 1
-                df_cut['w_type'][j] = weld['w_type'][chosen_i]
-                df_cut['tpl1'][j] = weld['tpl1'][chosen_i]
-                df_cut['tpl2'][j] = weld['tpl2'][chosen_i]
-                df_cut['a'][j] = weld['a'][chosen_i]
-                df_cut['beta_w'][j] = weld['beta_w'][chosen_i]
-                df_cut['fu'][j] = weld['fu'][chosen_i]
-                df_cut['g_M2'][j] = weld['g_M2'][chosen_i]
-                df_cut['fw_vm'][j] = weld['fw_vm'][chosen_i]
-                df_cut['fw_perp'][j] = weld['fw_perp'][chosen_i]
-        else:
-            df_cut['w_type'] = weld['w_type']
-            df_cut['tpl1'] = weld['tpl1']
-            df_cut['tpl2'] = weld['tpl2']
-            df_cut['a'] = weld['a']
-            df_cut['beta_w'] = weld['beta_w']
-            df_cut['fu'] = weld['fu']
-            df_cut['g_M2'] = weld['g_M2']
-            df_cut['fw_vm'] = weld['fw_vm']
-            df_cut['fw_perp'] = weld['fw_perp']
+    if calc_mode == 'Values along weld':
+        forces_by_cut = forces.groupby('cut').first().reset_index()
+        list_of_cuts = forces_by_cut['cut'].values.tolist()
+        list_of_df = []
+        for cut in list_of_cuts:
+            df_cut = forces[forces['cut'] == cut]
+            list_distances = get_distances(df_cut)
+            df_cut['d'] = list_distances
+            df_cut = df_cut.sort_values(by=['d']).reset_index()
+            if isinstance(weld, pd.DataFrame):
+                df_cut['w_type'] = ''
+                df_cut['tpl1'] = 0
+                df_cut['tpl2'] = 0
+                df_cut['a'] = 0
+                df_cut['beta_w'] = 0
+                df_cut['fu'] = 0
+                df_cut['g_M2'] = 0
+                df_cut['fw_vm'] = 0
+                df_cut['fw_perp'] = 0
+                for j in range(len(list_distances)):
+                    checking = True
+                    i = 0
+                    chosen_i = 0
+                    while checking:
+                        if list_distances[j] <= weld['x'][i]:
+                            chosen_i = i
+                            checking = False
+                        else:
+                            i += 1
+                    df_cut['w_type'][j] = weld['w_type'][chosen_i]
+                    df_cut['tpl1'][j] = weld['tpl1'][chosen_i]
+                    df_cut['tpl2'][j] = weld['tpl2'][chosen_i]
+                    df_cut['a'][j] = weld['a'][chosen_i]
+                    df_cut['beta_w'][j] = weld['beta_w'][chosen_i]
+                    df_cut['fu'][j] = weld['fu'][chosen_i]
+                    df_cut['g_M2'][j] = weld['g_M2'][chosen_i]
+                    df_cut['fw_vm'][j] = weld['fw_vm'][chosen_i]
+                    df_cut['fw_perp'][j] = weld['fw_perp'][chosen_i]
+            else:
+                df_cut['w_type'] = weld['w_type']
+                df_cut['tpl1'] = weld['tpl1']
+                df_cut['tpl2'] = weld['tpl2']
+                df_cut['a'] = weld['a']
+                df_cut['beta_w'] = weld['beta_w']
+                df_cut['fu'] = weld['fu']
+                df_cut['g_M2'] = weld['g_M2']
+                df_cut['fw_vm'] = weld['fw_vm']
+                df_cut['fw_perp'] = weld['fw_perp']
+
+            calc_cut = calculate(df_cut)
+            list_of_df.append(calc_cut)
+    elif calc_mode == 'Max per weld':
+        forces_by_cut = forces.groupby('cut').first().reset_index()
+        list_of_cuts = forces_by_cut['cut'].values.tolist()
+        list_of_df = []
+        df_mean = forces.groupby('cut').mean(numeric_only=True)
+        df_max = forces.groupby(['cut']).max()
+        df_new = df_max
+        df_new['x'] = df_mean['x']
+        df_new['y'] = df_mean['y']
+        df_new['z'] = df_mean['z']
+        list_distances = get_distances_per_weld(df_new)
+        df_new['d'] = list_distances
+        df_cut = df_new.sort_values(by=['d']).reset_index()
+
+        df_cut['w_type'] = weld['w_type']
+        df_cut['tpl1'] = weld['tpl1']
+        df_cut['tpl2'] = weld['tpl2']
+        df_cut['a'] = weld['a']
+        df_cut['beta_w'] = weld['beta_w']
+        df_cut['fu'] = weld['fu']
+        df_cut['g_M2'] = weld['g_M2']
+        df_cut['fw_vm'] = weld['fw_vm']
+        df_cut['fw_perp'] = weld['fw_perp']
 
         calc_cut = calculate(df_cut)
         list_of_df.append(calc_cut)
+
     st.markdown("Select what to display")
     col1, col2 = st.columns(2)
     with col1:
